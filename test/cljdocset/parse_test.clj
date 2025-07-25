@@ -1,8 +1,17 @@
 (ns cljdocset.parse-test
   (:require
+   [babashka.fs :as fs]
    [cljdocset.parse :as parse]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]))
+
+(defn prepare-fixtures []
+  (when-not (fs/exists? "test/fixtures/reitit-0.9.1")
+    (fs/unzip "test/fixtures/reitit-0.9.1.zip" "test/fixtures/"))
+  (when-not (fs/exists? "test/fixtures/hiccup-2.0.0")
+    (fs/unzip "test/fixtures/hiccup-2.0.0.zip" "test/fixtures/")))
+
+(prepare-fixtures)
 
 (def fixture-dir "test/fixtures/reitit-0.9.1")
 (def core-html-path (str fixture-dir "/api/reitit.core.html"))

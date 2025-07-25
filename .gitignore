@@ -13,7 +13,6 @@ archive
 .cpcache
 .clojure-mcp
 .direnv
-test/fixtures/reitit*
 test-build
 build
 out
