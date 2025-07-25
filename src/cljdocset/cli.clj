@@ -66,7 +66,7 @@
   (-> ctx
       download/prepare-build-environment
       download/setup-cleanup
-      parse/parse-all-symbols
+      parse/parse-all-entries
       docset/resolve-docset-paths
       docset/create-docset-structure
       docset/copy-assets

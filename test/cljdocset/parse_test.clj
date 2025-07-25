@@ -79,17 +79,55 @@
       (is (every? #(str/ends-with? % ".html") api-pages))
       (is (some #(= "api/reitit.core.html" %) api-pages)))))
 
-(deftest parse-all-symbols-test
-  (testing "Full integration test - parse all symbols from reitit bundle"
+(deftest list-guide-pages-test
+  (testing "Can find all guide HTML files"
+    (let [guide-pages (parse/list-guide-pages fixture-dir)]
+      (is (seq guide-pages))
+      (is (every? #(str/starts-with? % "doc/") guide-pages))
+      (is (every? #(str/ends-with? % ".html") guide-pages))
+      (is (= 49 (count guide-pages)))
+      (is (some #(= "doc/introduction.html" %) guide-pages)))))
+
+(deftest extract-guide-title-test
+  (testing "Can extract title from guide HTML"
+    (let [intro-path (str fixture-dir "/doc/introduction.html")
+          dom (parse/parse-html-file intro-path)
+          title (parse/extract-guide-title dom)]
+      (is (= "Introduction" title))))
+
+  (testing "Can extract title from various guide formats"
+    (let [guides ["doc/basics-route-syntax.html"
+                  "doc/ring-ring-router.html"
+                  "doc/misc-faq.html"]
+          titles (map (fn [guide]
+                        (let [dom (parse/parse-html-file (str fixture-dir "/" guide))]
+                          (parse/extract-guide-title dom)))
+                      guides)]
+      (is (= ["Route Syntax" "Ring Router" "Frequently Asked Questions"] titles)))))
+
+(deftest extract-namespace-name-test
+  (testing "Can extract namespace name from API HTML"
+    (let [core-dom (parse/parse-html-file core-html-path)
+          ring-dom (parse/parse-html-file (str fixture-dir "/api/reitit.ring.html"))]
+      (is (= "reitit.core" (parse/extract-namespace-name core-dom)))
+      (is (= "reitit.ring" (parse/extract-namespace-name ring-dom))))))
+
+(deftest parse-all-entries-test
+  (testing "Full integration test - parse all entries from reitit bundle"
     (let [ctx {:paths {:bundle-dir fixture-dir}}
-          result (parse/parse-all-symbols ctx)
-          symbols (get-in result [:docset-data :symbols])]
+          result (parse/parse-all-entries ctx)
+          entries (get-in result [:docset-data :symbols])
+          symbols (filter #(not (contains? #{"Namespace" "Guide"} (:type %))) entries)
+          namespaces (filter #(= "Namespace" (:type %)) entries)
+          guides (filter #(= "Guide" (:type %)) entries)]
+
+      ;; Check symbols (same as before)
       (is (> (count symbols) 200))
       (is (every? #(contains? % :name) symbols))
       (is (every? #(contains? % :type) symbols))
       (is (every? #(str/includes? (:path %) "#") symbols))
 
-      (testing "Path format is correct"
+      (testing "Path format is correct for symbols"
         (is (every? #(re-matches #"api/[^/]+\.html#.+" (:path %)) symbols)))
 
       (testing "Contains expected protocols"
@@ -118,12 +156,34 @@
           ;; Check some specific functions
           (is (some #(= "router" (:name %)) functions))
           (is (some #(= "match->path" (:name %)) functions))
-          (is (some #(= "*max-compile-depth*" (:name %)) functions))))))
+          (is (some #(= "*max-compile-depth*" (:name %)) functions))))
 
-  (testing "Full integration test - parse all symbols from hiccup bundle"
+      ;; Check namespace entries
+      (testing "Contains namespace entries"
+        (is (= 36 (count namespaces)))
+        (is (every? #(= "Namespace" (:type %)) namespaces))
+        (is (every? #(str/starts-with? (:path %) "api/") namespaces))
+        (is (every? #(str/ends-with? (:path %) ".html") namespaces))
+        (is (some #(= "reitit.core" (:name %)) namespaces))
+        (is (some #(= "reitit.ring" (:name %)) namespaces)))
+
+      ;; Check guide entries
+      (testing "Contains guide entries"
+        (is (= 49 (count guides)))
+        (is (every? #(= "Guide" (:type %)) guides))
+        (is (every? #(str/starts-with? (:path %) "doc/") guides))
+        (is (every? #(str/ends-with? (:path %) ".html") guides))
+        (is (some #(= "Introduction" (:name %)) guides))
+        (is (some #(= "Route Syntax" (:name %)) guides)))))
+
+  (testing "Full integration test - parse all entries from hiccup bundle"
     (let [ctx {:paths {:bundle-dir "test/fixtures/hiccup-2.0.0"}}
-          result (parse/parse-all-symbols ctx)
-          symbols (get-in result [:docset-data :symbols])]
+          result (parse/parse-all-entries ctx)
+          entries (get-in result [:docset-data :symbols])
+          symbols (filter #(not (contains? #{"Namespace" "Guide"} (:type %))) entries)
+          namespaces (filter #(= "Namespace" (:type %)) entries)
+          guides (filter #(= "Guide" (:type %)) entries)]
+
       (is (> (count symbols) 50))
 
       (testing "Contains expected macros"
@@ -138,11 +198,25 @@
         (let [protocols (filter #(= "Protocol" (:type %)) symbols)]
           (is (some #(= "HtmlRenderer" (:name %)) protocols))))
 
-      (testing "Contains form helper functions"
+      (testing "Contains expected form helper functions"
         (let [functions (filter #(= "Function" (:type %)) symbols)]
           (is (some #(= "form-to" (:name %)) functions))
           (is (some #(= "check-box" (:name %)) functions))
-          (is (some #(= "drop-down" (:name %)) functions)))))))
+          (is (some #(= "drop-down" (:name %)) functions))))
+
+      ;; Check namespace entries
+      (testing "Contains namespace entries"
+        (is (= 9 (count namespaces)))
+        (is (every? #(= "Namespace" (:type %)) namespaces))
+        (is (some #(= "hiccup.core" (:name %)) namespaces))
+        (is (some #(= "hiccup2.core" (:name %)) namespaces)))
+
+      ;; Check guide entries
+      (testing "Contains guide entries"
+        (is (= 2 (count guides)))
+        (is (every? #(= "Guide" (:type %)) guides))
+        (is (some #(= "Hiccup" (:name %)) guides))
+        (is (some #(= "Syntax" (:name %)) guides))))))
 
 (deftest type-mapping-test
   (testing "Clojure types map correctly to Dash types"
@@ -205,14 +279,14 @@
     (spit "test/fixtures/reitit.edn"
           (with-out-str
             (-> {:paths {:bundle-dir fixture-dir}}
-                (parse/parse-all-symbols)
+                (parse/parse-all-entries)
                 (pp/pprint)))))
 
   (let [fixture-dir "test/fixtures/hiccup-2.0.0"]
     (spit "test/fixtures/hiccup.edn"
           (with-out-str
             (-> {:paths {:bundle-dir fixture-dir}}
-                (parse/parse-all-symbols)
+                (parse/parse-all-entries)
                 (pp/pprint)))))
 
 ;;

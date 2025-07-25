@@ -56,13 +56,13 @@
 (defn insert-symbol!
   "Insert a single symbol into the searchIndex table.
   Takes db-conn, name, type, and path."
-  [db-conn name type path]
+  [db-conn symbol-name symbol-type symbol-path]
   #?(:bb
      (jdbc/execute! db-conn
                     ["INSERT OR IGNORE INTO searchIndex (name, type, path) VALUES (?, ?, ?)"
-                     name type path])
+                     symbol-name symbol-type symbol-path])
      :clj
-     (sql/insert! db-conn :searchIndex {:name name :type type :path path})))
+     (sql/insert! db-conn :searchIndex {:name symbol-name :type symbol-type :path symbol-path})))
 
 (defn insert-symbols!
   "Batch insert multiple symbols into the searchIndex table.
@@ -71,10 +71,12 @@
   (when (seq symbols)
     #?(:bb
        ;; Use individual inserts for Babashka compatibility
-       (doseq [{:keys [name type path]} symbols]
-         (jdbc/execute! db-conn
-                        ["INSERT OR IGNORE INTO searchIndex (name, type, path) VALUES (?, ?, ?)"
-                         name type path]))
+       (do
+         (doseq [{:keys [name type path]} symbols]
+           (jdbc/execute! db-conn
+                          ["INSERT OR IGNORE INTO searchIndex (name, type, path) VALUES (?, ?, ?)"
+                           name type path]))
+         nil)
 
        :clj
        ;; Use batch operations with transactions in Clojure
@@ -88,10 +90,10 @@
 (defn symbol-exists?
   "Check if a symbol is already indexed.
   Takes db-conn, name, type, and path."
-  [db-conn name type path]
+  [db-conn symbol-name symbol-type symbol-path]
   (let [result (jdbc/execute-one! db-conn
                                   ["SELECT 1 FROM searchIndex WHERE name = ? AND type = ? AND path = ?"
-                                   name type path])]
+                                   symbol-name symbol-type symbol-path])]
     (boolean result)))
 
 (defn count-symbols
