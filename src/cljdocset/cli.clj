@@ -4,6 +4,7 @@
    [cljdocset.db :as db]
    [cljdocset.docset :as docset]
    [cljdocset.download :as download]
+   [cljdocset.images :as images]
    [cljdocset.parse :as parse]
    [cljdocset.util :as util]
    [clojure.string :as str]))
@@ -70,6 +71,7 @@
       docset/resolve-docset-paths
       docset/create-docset-structure
       docset/copy-assets
+      images/download-all-images
       docset/create-info-plist
       docset/add-icon
       db/initialize-db

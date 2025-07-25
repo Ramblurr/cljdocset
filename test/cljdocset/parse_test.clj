@@ -6,10 +6,10 @@
    [clojure.test :refer [deftest is testing]]))
 
 (defn prepare-fixtures []
-  (when-not (fs/exists? "test/fixtures/reitit-0.9.1")
-    (fs/unzip "test/fixtures/reitit-0.9.1.zip" "test/fixtures/"))
-  (when-not (fs/exists? "test/fixtures/hiccup-2.0.0")
-    (fs/unzip "test/fixtures/hiccup-2.0.0.zip" "test/fixtures/")))
+  (let [fixtures ["reitit-0.9.1.zip" "hiccup-2.0.0.zip" "clj-poly-0.2.22.zip" "tempel-1.0.0-RC1.zip"]]
+    (doseq [f fixtures]
+      (when-not (fs/exists? (str "test/fixtures/" f))
+        (fs/copy (str "test/fixtures/" f) "test/fixtures/")))))
 
 (prepare-fixtures)
 

@@ -1,6 +1,7 @@
 (ns cljdocset.cli-test
-  (:require [clojure.test :refer [deftest is testing]]
-            [cljdocset.cli :as cli]))
+  (:require
+   [cljdocset.cli :as cli]
+   [clojure.test :refer [deftest is testing]]))
 
 (deftest test-dispatch-table
   (testing "dispatch table contains build command"

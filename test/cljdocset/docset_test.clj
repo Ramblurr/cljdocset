@@ -1,9 +1,9 @@
 (ns cljdocset.docset-test
   (:require
-   [clojure.test :refer [deftest testing is]]
-   [cljdocset.docset :as docset]
    [babashka.fs :as fs]
-   [clojure.string :as str]))
+   [cljdocset.docset :as docset]
+   [clojure.string :as str]
+   [clojure.test :refer [deftest is testing]]))
 
 (deftest resolve-docset-paths-test
   (testing "resolves all docset paths with build dir"
