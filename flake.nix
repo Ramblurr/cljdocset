@@ -1,5 +1,5 @@
 {
-  description = "cljdocset - A tool to generate a cljdoc set from a Clojure project";
+  description = "a tool to generate a docset from the cljdoc of a Clojure project";
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1"; # tracks nixpkgs unstable branch
     flakelight.url = "github:nix-community/flakelight";
@@ -15,7 +15,7 @@
     }:
     flakelight ./. {
       packages = {
-        bb =
+        babashka =
           pkgs:
           clj-nix.packages.${pkgs.system}.mkBabashka {
             withFeatures = [
@@ -24,38 +24,21 @@
             ];
           };
         cljdocset =
-          pkgs:
-          pkgs.writeShellApplication (
-            let
-              script = ./spdx;
-            in
-            {
-              name = "spdx";
-              runtimeInputs = [
-                pkgs.babashka
-                pkgs.git
-              ];
-              text = ''
-                exec ${pkgs.babashka}/bin/bb ${script} $@
-              '';
-              checkPhase = ''
-                ${pkgs.clj-kondo}/bin/clj-kondo --config '{:linters {:namespace-name-mismatch {:level :off}}}' --lint ${script}
-              '';
-            }
-          );
+          pkgs: pkgs.callPackage ./package.nix { babashka = self.packages.${pkgs.system}.babashka; };
       };
 
       app = pkgs: {
-        meta.description = "cljdocset - A tool to generate a cljdoc set from a Clojure project";
+        meta.description = "a tool to generate a docset from the cljdoc of a Clojure project";
         type = "app";
-        program = "${self.packages.${pkgs.system}.default}/bin/spdx";
+        program = "${self.packages.${pkgs.system}.default}/bin/cljdocset";
       };
       devShell.packages =
         pkgs: with pkgs; [
           clj-kondo
-          babashka
+          cljfmt
           git
-          self.packages.${pkgs.system}.default
+          #self.packages.${pkgs.system}.cljdocset
+          self.packages.${pkgs.system}.babashka
         ];
 
       flakelight.builtinFormatters = false;

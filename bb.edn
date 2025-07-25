@@ -1,6 +1,7 @@
 {:paths ["src"]
  :tasks {:requires         ([clojure.string :as str]
                             [babashka.tasks :refer [shell]])
+         cljdocset         (apply shell "bb --main cljdocset.cli" *command-line-args*)
          dev               (clojure "-M:repl/cider:dev:test")
          test              (apply clojure "-M:test:kaocha" *command-line-args*)
          fmt               (shell "cljfmt -v fix src test dev")

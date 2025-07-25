@@ -2,29 +2,16 @@
   babashka,
   clj-kondo,
   coreutils,
-  gum,
-  jq,
   lib,
   makeWrapper,
-  nix-output-monitor,
-  openssh,
-  socat,
   stdenv,
-  systemd,
   ...
 }:
 let
-  mainNs = "sandbox.core";
-  pname = "boxai";
+  mainNs = "cljdocset.cli";
+  pname = "cljdocset";
   version = "0.0.1";
   runtimeDeps = [
-    gum
-    socat
-    openssh
-    coreutils
-    jq
-    systemd
-    nix-output-monitor
   ];
 in
 stdenv.mkDerivation {
@@ -65,7 +52,7 @@ stdenv.mkDerivation {
   '';
 
   meta = {
-    description = "A runner for sandboxed environments for Agentic Coding tools like claude-code";
+    description = "a tool to generate a docset from the cljdoc of a Clojure project";
     license = lib.licenses.eupl12;
     maintainers = [ lib.maintainers.ramblurr ];
   };
