@@ -1,0 +1,15 @@
+!.github
+!.gitignore
+.clj-kondo
+!.clj-kondo/config.edn
+!.clj-kondo/app/*
+!.env.edn
+extra/
+**/.portal/
+**/target
+archive
+.lsp
+.nrepl-port
+.cpcache
+.clojure-mcp
+.direnv
