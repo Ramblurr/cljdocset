@@ -1,15 +1,13 @@
-
-{:paths []
+{:paths ["src"]
  :tasks {:requires         ([clojure.string :as str]
                             [babashka.tasks :refer [shell]])
-         test (apply clojure "-M:jdbc:kaocha" "jdbc" *command-line-args*)
-         fmt               (do
-                             (shell "cljfmt -v fix src/goose/brokers/jdbc")
-                             (shell "cljfmt -v fix test/goose/brokers/jdbc"))
+         dev               (clojure "-M:repl/cider:dev:test")
+         test              (apply clojure "-M:test:kaocha" *command-line-args*)
+         fmt               (shell "cljfmt -v fix src test dev")
          lint.copy-configs (let [cp (-> (shell {:out :string} "clojure -Spath -M:test:dev") :out str/trim)]
                              (shell (str "clj-kondo --lint " cp " --dependencies --copy-configs --skip-lint")))
          lint.kondo        (shell "clj-kondo" *command-line-args*)
          lint              (shell (str "clj-kondo" " --fail-level error"
                                        (if (seq *command-line-args*)
                                          (str " --lint " (first *command-line-args*))
-                                         " --lint src/goose/brokers/jdbc --lint test/goose/brokers/jdbc")))}}
+                                         " --lint src dev test")))}}

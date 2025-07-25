@@ -13,3 +13,4 @@ archive
 .cpcache
 .clojure-mcp
 .direnv
+test/fixtures/reitit*
