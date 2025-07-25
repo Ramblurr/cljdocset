@@ -8,32 +8,31 @@
   "Resolves and adds all docset-related paths to the context map.
   Expects :cli-opts with :output-dir and :lib-info with :docset-name.
   Returns ctx with :paths containing all resolved paths."
-  [{:keys [cli-opts lib-info paths]
-    :as ctx}]
-  (let [output-dir (fs/path (:build-dir  paths) "out")
-        docset-name (:docset-name lib-info)
-        docset-dir (fs/path output-dir (str docset-name ".docset"))
-        contents-dir (fs/path docset-dir "Contents")
-        resources-dir (fs/path contents-dir "Resources")
-        documents-dir (fs/path resources-dir "Documents")
-        db-file (fs/path resources-dir "docSet.dsidx")
-        plist-file (fs/path contents-dir "Info.plist")
-        archive-file (fs/path output-dir (str docset-name ".tgz"))
-        icon-path (fs/path (:docset-dir paths) "icon@2x.png")
-        input-icon-path (when (fs/exists? (:icon-path cli-opts))
-                          (:icon-path cli-opts))]
-
-    (assoc ctx :paths
-           {:output-dir (str output-dir)
-            :docset-dir (str docset-dir)
-            :contents-dir (str contents-dir)
-            :resources-dir (str resources-dir)
-            :documents-dir (str documents-dir)
-            :input-icon-path input-icon-path
-            :icon-path (str icon-path)
-            :db-file (str db-file)
-            :plist-file (str plist-file)
-            :archive-file (str archive-file)})))
+  [{:keys [cli-opts lib-info paths] :as ctx}]
+  (let [output-dir      (fs/path (:build-dir paths) "out")
+        docset-name     (:docset-name lib-info)
+        docset-dir      (fs/path output-dir (str docset-name ".docset"))
+        contents-dir    (fs/path docset-dir "Contents")
+        resources-dir   (fs/path contents-dir "Resources")
+        documents-dir   (fs/path resources-dir "Documents")
+        db-file         (fs/path resources-dir "docSet.dsidx")
+        plist-file      (fs/path contents-dir "Info.plist")
+        archive-file    (fs/path output-dir (str docset-name ".tgz"))
+        icon-path       (fs/path docset-dir "icon@2x.png")
+        input-icon-path (when-let [icon-opt (:icon-path cli-opts)]
+                          (when (fs/exists? icon-opt)
+                            icon-opt))]
+    (update ctx :paths merge
+            {:output-dir      (str output-dir)
+             :docset-dir      (str docset-dir)
+             :contents-dir    (str contents-dir)
+             :resources-dir   (str resources-dir)
+             :documents-dir   (str documents-dir)
+             :input-icon-path input-icon-path
+             :icon-path       (str icon-path)
+             :db-file         (str db-file)
+             :plist-file      (str plist-file)
+             :archive-file    (str archive-file)})))
 
 (defn create-docset-structure
   "Creates the necessary directory structure for the docset.
