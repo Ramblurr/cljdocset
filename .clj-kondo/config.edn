@@ -1,0 +1,6 @@
+{:lint-as {next.jdbc/with-transaction clojure.core/let
+           cljdocset.db/with-connection clojure.core/let}
+ :linters {:unresolved-symbol {:exclude [conn]}
+           :unused-binding {:exclude-destructured-keys-in-fn-args true}
+           :missing-body-in-when {:level :off}}
+ :config-in-ns {cljdocset.db {:linters {:unused-binding {:level :off}}}}}
