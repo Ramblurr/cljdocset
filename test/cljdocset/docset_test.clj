@@ -50,8 +50,8 @@
         (fs/create-dirs docs-dir)
         (spit (str test-file) "<html>test</html>")
 
-        (let [ctx {:bundle-dir (str source-dir)
-                   :paths {:documents-dir (str docs-dir)}}]
+        (let [ctx {:paths {:bundle-dir (str source-dir)
+                           :documents-dir (str docs-dir)}}]
           (docset/copy-assets ctx)
           (is (fs/exists? (fs/path docs-dir "test.html")))
           (is (= "<html>test</html>" (slurp (str (fs/path docs-dir "test.html"))))))))))

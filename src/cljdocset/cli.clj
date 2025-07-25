@@ -1,7 +1,10 @@
 (ns cljdocset.cli
   (:require
    [babashka.cli :as cli]
+   [cljdocset.db :as db]
+   [cljdocset.docset :as docset]
    [cljdocset.download :as download]
+   [cljdocset.parse :as parse]
    [cljdocset.util :as util]
    [clojure.string :as str]))
 
@@ -55,6 +58,25 @@
   (println)
   (println "Run 'cljdocset <subcommand> --help' for more information on a subcommand."))
 
+(defn build-docset
+  "Main pipeline function that orchestrates the complete docset generation.
+  Takes a context map and threads it through all transformation steps."
+  [ctx]
+  (util/info "Starting docset generation pipeline...")
+  (-> ctx
+      download/prepare-build-environment
+      download/setup-cleanup
+      parse/parse-all-symbols
+      docset/resolve-docset-paths
+      docset/create-docset-structure
+      docset/copy-assets
+      docset/create-info-plist
+      docset/add-icon
+      db/initialize-db
+      db/index-symbols
+      docset/archive-docset
+      docset/move-artifacts))
+
 (defn- build-command
   "Execute the build command with parsed options"
   [{:keys [args opts]}]
@@ -70,24 +92,42 @@
 
       (try
         (let [[group-id artifact-id] (str/split library-name #"/")
+              docset-name (str artifact-id "-" version)
               ctx {:cli-opts opts
                    :lib-info {:group-id group-id
                               :artifact-id artifact-id
-                              :version version}
+                              :version version
+                              :docset-name docset-name}
                    :paths {}}]
           (when (or (not group-id) (not artifact-id))
             (throw (ex-info "Invalid library name format. Expected: group-id/artifact-id"
                             {:library-name library-name})))
-          (util/info "Building docset for" library-name "version" version)
-          (let [result-ctx (download/prepare-build-environment ctx)]
-            (util/info "Build environment prepared successfully")
-            (util/debug "Bundle directory:" (get-in result-ctx [:paths :bundle-dir]))))
+
+          ;; Run the complete pipeline
+          (let [result-ctx (build-docset ctx)
+                {:keys [docset-path archive-path]} (:final-artifacts result-ctx)]
+
+            ;; Report success
+            (util/info "")
+            (util/info "✅ Docset generation completed successfully!")
+            (util/info "")
+            (util/info "Generated artifacts:")
+            (util/info "  Docset:" docset-path)
+            (util/info "  Archive:" archive-path)
+            (util/info "")
+            (util/info "You can now:")
+            (util/info "  - Import the .docset directory into Dash/Zeal")
+            (util/info "  - Share the .tgz archive for distribution")))
 
         (catch Exception e
+          (util/error "Docset generation failed:")
           (util/error (.getMessage e))
           (when-let [data (ex-data e)]
             (doseq [[k v] data]
               (util/error (str "  " (name k) ":") v)))
+          (when util/*verbose*
+            (util/error "Stack trace:")
+            (.printStackTrace e))
           (System/exit 1))))))
 
 (def dispatch-table

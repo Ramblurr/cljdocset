@@ -1,4 +1,6 @@
 {:paths ["src"]
+ :deps  {org.clj-commons/hickory {:mvn/version "0.7.7"}
+         hiccup/hiccup           {:mvn/version "2.0.0"}}
  :tasks {:requires         ([clojure.string :as str]
                             [babashka.tasks :refer [shell]])
          cljdocset         {:requires ([cljdocset.cli])

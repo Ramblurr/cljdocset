@@ -137,6 +137,7 @@
   "Pipeline function that prepares the complete build environment.
   Creates directories, downloads bundle, extracts it, and sets up cleanup."
   [ctx]
+  (util/info "Preparing build environment...")
   (-> ctx
       create-build-directory
       resolve-version

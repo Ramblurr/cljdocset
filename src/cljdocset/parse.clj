@@ -1,6 +1,7 @@
 (ns cljdocset.parse
   (:require
    [babashka.fs :as fs]
+   [cljdocset.util :as util]
    [clojure.string :as str]
    [hickory.core :as hickory]
    [hickory.select :as s]))
@@ -102,6 +103,7 @@
   Expects context with :paths :bundle-dir.
   Returns context with symbols added at :docset-data :symbols"
   [ctx]
+  (util/info "Parsing API documentation...")
   (let [bundle-dir  (get-in ctx [:paths :bundle-dir])
         api-pages   (list-api-pages bundle-dir)
         all-symbols (mapcat (fn [relative-path]
@@ -109,4 +111,7 @@
                                     dom       (parse-html-file full-path)]
                                 (extract-symbols dom relative-path)))
                             api-pages)]
+    (util/debug (format "Parsed %d symbols from %d API pages"
+                        (count all-symbols)
+                        (count api-pages)))
     (assoc-in ctx [:docset-data :symbols] all-symbols)))
