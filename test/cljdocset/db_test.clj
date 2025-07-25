@@ -14,7 +14,7 @@
   [f]
   (fs/with-temp-dir [temp-dir {}]
     (let [db-file (fs/path temp-dir "test.dsidx")]
-      (binding [*temp-db-file*           (str db-file)
+      (binding [*temp-db-file* (str db-file)
                 cljdocset.util/*verbose* false]
         (f)))))
 
@@ -31,7 +31,7 @@
   (testing "create-database creates SQLite file and parent directories"
     (let [temp-dir (fs/create-temp-dir)
           test-dir (fs/path temp-dir "nested" "dir")
-          test-db  (str (fs/path test-dir "test.db"))]
+          test-db (str (fs/path test-dir "test.db"))]
       (is (not (fs/exists? test-dir)))
       (db/create-database test-db)
       (is (fs/exists? test-db))
@@ -40,7 +40,7 @@
 (deftest test-insert-symbols-batch
   (testing "insert-symbols! batch inserts multiple symbols"
     (db/create-database *temp-db-file*)
-    (let [spec    (db/db-spec *temp-db-file*)
+    (let [spec (db/db-spec *temp-db-file*)
           symbols [{:name "func1" :type "Function" :path "api/a.html#func1"}
                    {:name "func2" :type "Macro" :path "api/b.html#func2"}
                    {:name "func3" :type "Variable" :path "api/c.html#func3"}]]
@@ -107,8 +107,8 @@
         (is (fs/exists? *temp-db-file*))
         (let [spec (db/db-spec *temp-db-file*)]
           (db/with-connection [conn spec]
-            (let [tables  (jdbc/execute! conn
-                                         ["SELECT name FROM sqlite_master WHERE type='table' AND name='searchIndex'"])
+            (let [tables (jdbc/execute! conn
+                                        ["SELECT name FROM sqlite_master WHERE type='table' AND name='searchIndex'"])
                   indexes (jdbc/execute! conn
                                          ["SELECT name FROM sqlite_master WHERE type='index' AND name='anchor'"])]
               (is (= 1 (count tables)))
@@ -119,8 +119,8 @@
     (let [symbols [{:name "router" :type "Function" :path "api/reitit.core.html#router"}
                    {:name "routes" :type "Function" :path "api/reitit.core.html#routes"}
                    {:name "match-by-path" :type "Function" :path "api/reitit.core.html#match-by-path"}]
-          ctx     {:paths       {:db-file *temp-db-file*}
-                   :docset-data {:symbols symbols}}]
+          ctx {:paths {:db-file *temp-db-file*}
+               :docset-data {:symbols symbols}}]
       (db/initialize-db ctx)
       (let [result (db/index-symbols ctx)]
         (is (= ctx result))
@@ -130,8 +130,8 @@
 
   (testing "index-symbols handles nil symbols gracefully"
     (let [temp-db (str (fs/path (fs/create-temp-dir) "test-nil.dsidx"))
-          ctx     {:paths       {:db-file temp-db}
-                   :docset-data {:symbols nil}}]
+          ctx {:paths {:db-file temp-db}
+               :docset-data {:symbols nil}}]
       (db/initialize-db ctx)
       (let [result (db/index-symbols ctx)]
         (is (= ctx result))
@@ -141,8 +141,8 @@
 
   (testing "index-symbols handles empty symbols list"
     (let [temp-db (str (fs/path (fs/create-temp-dir) "test-empty.dsidx"))
-          ctx     {:paths       {:db-file temp-db}
-                   :docset-data {:symbols []}}]
+          ctx {:paths {:db-file temp-db}
+               :docset-data {:symbols []}}]
       (db/initialize-db ctx)
       (let [result (db/index-symbols ctx)]
         (is (= ctx result))
