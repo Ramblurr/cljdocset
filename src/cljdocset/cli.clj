@@ -1,10 +1,17 @@
 (ns cljdocset.cli
-  (:require [babashka.cli :as cli]))
+  (:require
+   [babashka.cli :as cli]
+   [cljdocset.download :as download]
+   [cljdocset.util :as util]
+   [clojure.string :as str]))
 
 (def global-spec
   {:help {:desc "Show help"
           :alias :h
-          :coerce :boolean}})
+          :coerce :boolean}
+   :verbose {:desc "Enable verbose output"
+             :alias :v
+             :coerce :boolean}})
 
 (def build-spec
   {:output-dir {:desc "Directory to save the final docset"
@@ -12,9 +19,15 @@
                 :ref "<dir>"
                 :default "."
                 :default-desc "current directory"}
+   :build-dir {:desc "Build directory for extraction (default: temp dir, deleted on exit)"
+               :alias :b
+               :ref "<dir>"}
    :icon-path {:desc "Path to a 16x16 or 32x32 PNG icon to include in the docset"
                :alias :i
                :ref "<file>"}
+   :verbose {:desc "Enable verbose output"
+             :alias :v
+             :coerce :boolean}
    :help {:desc "Show help"
           :alias :h
           :coerce :boolean}})
@@ -42,74 +55,55 @@
   (println)
   (println "Run 'cljdocset <subcommand> --help' for more information on a subcommand."))
 
-(defn- print-build-help
-  "Print build command help text"
-  [_]
-  (println "cljdocset build - Generate a docset from a cljdoc bundle")
-  (println)
-  (println "Usage: cljdocset build <library-name> [version] [options]")
-  (println)
-  (println "Arguments:")
-  (println "  <library-name>  The fully qualified library name (e.g., metosin/reitit)")
-  (println "  [version]       The specific version (e.g., 0.9.1), defaults to \"latest\"")
-  (println)
-  (println "Options:")
-  (println (format-help {:spec build-spec
-                         :order [:output-dir :icon-path :help]}))
-  (println)
-  (println "Examples:")
-  (println "  # Generate docset for latest version")
-  (println "  cljdocset build metosin/reitit")
-  (println)
-  (println "  # Generate docset for specific version")
-  (println "  cljdocset build metosin/reitit 0.9.1")
-  (println)
-  (println "  # Generate docset with custom output directory and icon")
-  (println "  cljdocset build clj-commons/hickory 0.7.3 \\")
-  (println "    --output-dir ~/Documents/Docsets \\")
-  (println "    --icon-path ./assets/hickory-icon.png"))
-
 (defn- build-command
   "Execute the build command with parsed options"
   [{:keys [args opts]}]
-  (when (:help opts)
-    (print-build-help nil)
-    (System/exit 0))
-
-  (let [library-name (first args)
-        version (or (second args) "latest")]
-    (when-not library-name
-      (println "Error: Missing required argument <library-name>")
-      (println)
-      (print-build-help nil)
+  (binding [util/*verbose* (:verbose opts)]
+    (when (> (count args) 2)
+      (util/error "Too many arguments provided. Expected: <library-name> [version]")
       (System/exit 1))
-    ;; TODO: Implement actual build logic
-    (println "Building docset for" library-name "version" version)
-    (println "Output directory:" (:output-dir opts))
-    (when (:icon-path opts)
-      (println "Icon path:" (:icon-path opts)))))
+    (let [library-name (first args)
+          version (or (second args) "latest")]
+      (when-not library-name
+        (util/error "Missing required argument. Expected: <library-name> [version]")
+        (System/exit 1))
+
+      (try
+        (let [[group-id artifact-id] (str/split library-name #"/")
+              ctx {:cli-opts opts
+                   :lib-info {:group-id group-id
+                              :artifact-id artifact-id
+                              :version version}
+                   :paths {}}]
+          (when (or (not group-id) (not artifact-id))
+            (throw (ex-info "Invalid library name format. Expected: group-id/artifact-id"
+                            {:library-name library-name})))
+
+          (util/info "Building docset for" library-name "version" version)
+          (util/debug "Output directory:" (:output-dir opts))
+          (when (:icon-path opts)
+            (util/debug "Icon path:" (:icon-path opts)))
+
+          (let [result-ctx (download/prepare-build-environment ctx)]
+            (util/info "Build environment prepared successfully")
+            (util/debug "Bundle directory:" (get-in result-ctx [:paths :bundle-dir]))))
+
+        (catch Exception e
+          (util/error (.getMessage e))
+          (when-let [data (ex-data e)]
+            (doseq [[k v] data]
+              (util/error (str "  " (name k) ":") v)))
+          (System/exit 1))))))
 
 (def dispatch-table
-  [{:cmds ["build"]
-    :fn build-command
-    :spec build-spec}
-   {:cmds []
-    :fn print-main-help}])
+  [{:cmds ["build"] :fn build-command :spec build-spec}
+   {:cmds [] :fn print-main-help}])
 
 (defn -main
-  "Main entry point for the cljdocset CLI tool"
   [& args]
   (try
-    (let [parsed (cli/dispatch dispatch-table args {:spec global-spec})]
-      (when (and (empty? (:dispatch parsed))
-                 (:help (:opts parsed)))
-        (print-main-help nil)
-        (System/exit 0)))
+    (cli/dispatch dispatch-table args)
     (catch Exception e
-      (if (= :org.babashka/cli (:type (ex-data e)))
-        (do
-          (println "Error:" (ex-message e))
-          (println)
-          (print-main-help nil)
-          (System/exit 1))
-        (throw e)))))
+      (util/error "Exception: ")
+      (util/error e)
+      (System/exit 1))))

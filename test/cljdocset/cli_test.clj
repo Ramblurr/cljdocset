@@ -1,4 +1,16 @@
 (ns cljdocset.cli-test
-  #_(:require [clojure.test :refer [deftest is testing]]
-              [babashka.cli :as cli]
-              [cljdocset.cli :as sut]))
+  (:require [clojure.test :refer [deftest is testing]]
+            [cljdocset.cli :as cli]))
+
+(deftest test-dispatch-table
+  (testing "dispatch table contains build command"
+    (let [build-entry (first (filter #(= ["build"] (:cmds %)) cli/dispatch-table))]
+      (is (some? build-entry))
+      (is (= cli/build-spec (:spec build-entry))))))
+
+(deftest test-build-spec
+  (testing "build spec contains required options"
+    (is (contains? cli/build-spec :output-dir))
+    (is (contains? cli/build-spec :build-dir))
+    (is (contains? cli/build-spec :icon-path))
+    (is (contains? cli/build-spec :help))))
