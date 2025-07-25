@@ -66,6 +66,24 @@
   (println (format-help {:spec global-spec}))
   (println)
   (println "Run 'cljdocset <subcommand> --help' for more information on a subcommand."))
+(defn- print-build-help []
+  (println "cljdocset build - Generate a docset from a cljdoc bundle")
+  (println)
+  (println "Usage: cljdocset build <library-name> [version] [options]")
+  (println)
+  (println "Arguments:")
+  (println "  library-name    The library to generate a docset for (e.g., metosin/reitit)")
+  (println "  version         The version to download (default: latest)")
+  (println)
+  (println "Options:")
+  (println (format-help {:spec build-spec
+                         :order [:output-dir :build-dir :icon-path :with-javascript
+                                 :enable-fts :verbose :help]}))
+  (println)
+  (println "Examples:")
+  (println "  cljdocset build metosin/reitit")
+  (println "  cljdocset build metosin/reitit 0.5.18 --output-dir ./docsets")
+  (println "  cljdocset build ring/ring-core latest --icon-path ./my-icon.png"))
 
 (defn build-docset
   "Main pipeline function that orchestrates the complete docset generation.
@@ -91,6 +109,10 @@
   "Execute the build command with parsed options"
   [{:keys [args opts]}]
   (binding [util/*verbose* (:verbose opts)]
+    (when (:help opts)
+      (print-build-help)
+      (System/exit 0))
+
     (when (> (count args) 2)
       (util/error "Too many arguments provided. Expected: <library-name> [version]")
       (System/exit 1))

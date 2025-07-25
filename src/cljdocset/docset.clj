@@ -145,31 +145,31 @@
   [{:keys [paths cli-opts] :as ctx}]
   (util/info "Moving artifacts to output directory...")
   (let [{:keys [docset-dir archive-file]} paths
-        ;; Use user's output-dir or default to current directory
         final-output-dir (or (:output-dir cli-opts) ".")
         final-output-path (fs/absolutize final-output-dir)]
 
-    ;; Create the final output directory if it doesn't exist
     (when-not (fs/exists? final-output-path)
       (fs/create-dirs final-output-path))
 
-    ;; Always move files to the user's specified location
     (let [docset-name (fs/file-name docset-dir)
           archive-name (fs/file-name archive-file)
           final-docset (fs/path final-output-path docset-name)
           final-archive (fs/path final-output-path archive-name)]
 
-      ;; Move docset directory
+      (util/debug "Moving docset from" docset-dir "to" (str final-docset))
       (when (fs/exists? final-docset)
+        (util/debug "Removing existing docset at" (str final-docset))
         (fs/delete-tree final-docset))
-      (fs/move docset-dir final-docset)
 
-      ;; Move archive file
+      (fs/copy-tree docset-dir final-docset)
+      ;; (fs/delete-tree docset-dir)
+
+      (util/debug "Moving archive from" archive-file "to" (str final-archive))
       (when (fs/exists? final-archive)
+        (util/debug "Removing existing archive at" (str final-archive))
         (fs/delete final-archive))
       (fs/move archive-file final-archive)
 
-      ;; Return updated context with final locations
       (assoc ctx :final-artifacts
              {:docset-path (str final-docset)
               :archive-path (str final-archive)}))))
