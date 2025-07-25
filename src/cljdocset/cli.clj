@@ -55,19 +55,19 @@
 (defn- print-main-help
   "Print main help text"
   [_]
-  (println "cljdocset" version "- Convert cljdoc bundles to Dash/Zeal docsets")
+  (println "cljdocset" version "- Convert cljdoc to Dash/Zeal docsets")
   (println)
   (println "Usage: cljdocset <subcommand> [options]")
   (println)
   (println "Available subcommands:")
-  (println "  build    Generate a docset from a cljdoc bundle")
+  (println "  build    Generate a docset from cljdocs")
   (println)
   (println "Options:")
   (println (format-help {:spec global-spec}))
   (println)
   (println "Run 'cljdocset <subcommand> --help' for more information on a subcommand."))
 (defn- print-build-help []
-  (println "cljdocset build - Generate a docset from a cljdoc bundle")
+  (println "cljdocset build - Generate a docset from cljdoc")
   (println)
   (println "Usage: cljdocset build <library-name> [version] [options]")
   (println)

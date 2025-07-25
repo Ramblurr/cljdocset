@@ -1,8 +1,6 @@
 !.github
 !.gitignore
-.clj-kondo
-!.clj-kondo/config.edn
-!.clj-kondo/app/*
+.clj-kondo/.cache
 !.env.edn
 extra/
 **/.portal/

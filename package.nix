@@ -30,8 +30,8 @@ stdenv.mkDerivation {
   checkPhase = ''
     echo "Running clj-kondo linting..."
     ${lib.getExe clj-kondo} \
-      --lint $src \
-      --config '{:skip-comments true :linters {:namespace-name-mismatch {:level :off}}}'
+      --config ./.clj-kondo/config.edn \
+      --lint $src
   '';
 
   installPhase = ''

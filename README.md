@@ -16,6 +16,48 @@ bb cljdocset build --verbose --output-dir ./out metosin/reitit
 cp -r out/reitit-0.9.1.docset ~/.local/share/Zeal/Zeal/docsets/
 ```
 
+## Install
+
+### Using nix
+
+``` bash
+# Run directly
+$ nix run github:ramblurr/cljdocset
+cljdocset build - Generate a docset from cljdoc
+
+Usage: cljdocset build <library-name> [version] [options]
+
+Arguments:
+  library-name    The library to generate a docset for (e.g., metosin/reitit)
+  version         The version to download (default: latest)
+
+Options:
+  -o, --output-dir      <dir>  current directory Directory to save the final docset
+  -b, --build-dir       <dir>                    Build directory for extraction (default: temp dir, deleted on exit)
+  -i, --icon-path       <file>                   Path to a 16x16 or 32x32 PNG icon to include in the docset
+  -j, --with-javascript        false             Enable JavaScript in the docset (default: false)
+  -f, --enable-fts             false             Enable full-text search by default in the docset
+  -v, --verbose                                  Enable verbose output
+  -h, --help                                     Show help
+
+Examples:
+  cljdocset build metosin/reitit
+  cljdocset build metosin/reitit 0.5.18 --output-dir ./docsets
+  cljdocset build ring/ring-core latest --icon-path ./my-icon.png
+
+```
+
+Add to your flake:
+
+``` nix
+{
+  inputs.cljdocset.url = "https://flakehub.com/f/ramblurr/cljdocset/0.1";
+  outputs = { self, cljdocset }: {
+    # use the package: cljdocset-packages.x86_64-linux.cljdocset
+  };
+```
+
+
 
 ## License: European Union Public License 1.2
 
