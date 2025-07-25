@@ -2,6 +2,7 @@
   (:require
    [babashka.fs :as fs]
    [cljdocset.docset :as docset]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]))
 
@@ -77,7 +78,7 @@
           (is (str/includes? content "<true />")))))))
 
 (deftest add-icon-test
-  (testing "copies icon when provided"
+  (testing "copies user icon when provided"
     (fs/with-temp-dir [temp-dir {}]
       (let [icon-file (fs/path temp-dir "icon.png")
             docset-dir (fs/path temp-dir "test.docset")]
@@ -86,20 +87,26 @@
 
         (let [ctx {:cli-opts {}
                    :paths {:docset-dir (str docset-dir)
-                           :input-icon-path (str icon-file)
-                           :icon-path (str (fs/path docset-dir "icon@2x.png"))}}]
+                           :icon-paths [[icon-file (fs/path docset-dir "icon.png")]]}}]
           (docset/add-icon ctx)
-          (is (fs/exists? (fs/path docset-dir "icon@2x.png")))
-          (is (= "fake-png-data" (slurp (str (fs/path docset-dir "icon@2x.png")))))))))
+          (is (fs/exists? (fs/path docset-dir "icon.png")))
+          (is (= "fake-png-data" (slurp (str (fs/path docset-dir "icon.png")))))))))
 
-  (testing "no-op when input-icon-path is nil"
+  (testing "uses default icons when no user icon provided"
     (fs/with-temp-dir [temp-dir {}]
       (let [docset-dir (fs/path temp-dir "test.docset")]
         (fs/create-dirs docset-dir)
         (let [ctx {:cli-opts {}
-                   :paths {:docset-dir (str docset-dir)}}]
+                   :paths {:docset-dir (str docset-dir)
+                           :icon-paths [[(io/resource "cljdoc.png") (fs/path docset-dir "icon.png")]
+                                        [(io/resource "cljdoc@2x.png") (fs/path docset-dir "icon@2x.png")]]}}]
           (docset/add-icon ctx)
-          (is (empty? (fs/list-dir docset-dir))))))))
+          ;; Check that default icons were copied
+          (is (fs/exists? (fs/path docset-dir "icon.png")))
+          (is (fs/exists? (fs/path docset-dir "icon@2x.png")))
+          ;; Check that the files contain actual icon data (not empty)
+          (is (> (fs/size (fs/path docset-dir "icon.png")) 0))
+          (is (> (fs/size (fs/path docset-dir "icon@2x.png")) 0)))))))
 
 (deftest archive-docset-test
   (testing "creates tar.gz archive"

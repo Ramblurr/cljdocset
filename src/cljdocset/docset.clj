@@ -3,6 +3,7 @@
    [babashka.fs :as fs]
    [babashka.process :as process]
    [cljdocset.util :as util]
+   [clojure.java.io :as io]
    [hiccup2.core :as hiccup]))
 
 (defn resolve-docset-paths
@@ -11,8 +12,7 @@
   The user's output-dir from cli-opts is only used at the final move step.
   Returns ctx with :paths containing all resolved paths."
   [{:keys [cli-opts lib-info paths] :as ctx}]
-  (let [;; Always use build-dir/out for the working output directory
-        output-dir (fs/path (:build-dir paths) "out")
+  (let [output-dir (fs/path (:build-dir paths) "out")
         docset-name (:docset-name lib-info)
         docset-dir (fs/path output-dir (str docset-name ".docset"))
         contents-dir (fs/path docset-dir "Contents")
@@ -21,20 +21,17 @@
         db-file (fs/path resources-dir "docSet.dsidx")
         plist-file (fs/path contents-dir "Info.plist")
         archive-file (fs/path output-dir (str docset-name ".tgz"))
-        icon-path (fs/path docset-dir "icon@2x.png")
-        ;; Only set input-icon-path if the file exists
-        input-icon-path (when-let [icon-opt (:icon-path cli-opts)]
-                          (let [icon-path-obj (fs/path icon-opt)]
-                            (when (fs/exists? icon-path-obj)
-                              (str icon-path-obj))))]
+        icon-paths (if-let [user-icon (:icon-path cli-opts)]
+                     [[user-icon (fs/path docset-dir "icon.png")]]
+                     [[(io/resource "cljdoc.png") (fs/path docset-dir "icon.png")]
+                      [(io/resource "cljdoc@2x.png") (fs/path docset-dir "icon@2x.png")]])]
     (update ctx :paths merge
             {:output-dir (str output-dir)
              :docset-dir (str docset-dir)
              :contents-dir (str contents-dir)
              :resources-dir (str resources-dir)
              :documents-dir (str documents-dir)
-             :input-icon-path input-icon-path
-             :icon-path (str icon-path)
+             :icon-paths icon-paths
              :db-file (str db-file)
              :plist-file (str plist-file)
              :archive-file (str archive-file)})))
@@ -61,33 +58,42 @@
 
 (defn- info-plist-hiccup
   "Returns the Hiccup structure for the Info.plist file."
-  [{:keys [bundle-id docset-name artifact-id version]}]
-  [:plist {:version "1.0"}
-   [:dict
-    [:key "CFBundleIdentifier"]
-    [:string bundle-id]
-    [:key "CFBundleName"]
-    [:string (str artifact-id " " version)]
-    [:key "isDashDocset"]
-    [:true]
-    [:key "DocSetPlatformFamily"]
-    [:string "cljlib"]
-    [:key "dashIndexFilePath"]
-    [:string (str docset-name "/index.html")]
-    [:key "isJavaScriptEnabled"]
-    [:true]
-    [:key "DashDocSetFamily"]
-    [:string "dashtoc"]
-    [:key "DashDocSetKeyword"]
-    [:string "cljdoc"]]])
+  [{:keys [bundle-id docset-name artifact-id version with-javascript enable-fts]}]
+  (let [base-dict [:dict
+                   [:key "CFBundleIdentifier"]
+                   [:string bundle-id]
+                   [:key "CFBundleName"]
+                   [:string (str artifact-id " " version)]
+                   [:key "isDashDocset"]
+                   [:true]
+                   [:key "DocSetPlatformFamily"]
+                   [:string "cljlib"]
+                   [:key "dashIndexFilePath"]
+                   [:string (str docset-name "/index.html")]
+                   [:key "isJavaScriptEnabled"]
+                   (if with-javascript [:true] [:false])
+                   [:key "DashDocSetFamily"]
+                   [:string "dashtoc"]
+                   [:key "DashDocSetKeyword"]
+                   [:string "cljdoc"]]
+        ;; Add FTS key if enabled
+        final-dict (if enable-fts
+                     (conj base-dict
+                           [:key "DashDocSetDefaultFTSEnabled"]
+                           [:true])
+                     base-dict)]
+    [:plist {:version "1.0"} final-dict]))
 
 (defn create-info-plist
   "Generates the Info.plist file for the docset.
-  Expects ctx with :lib-info and :paths containing :plist-file.
+  Expects ctx with :lib-info, :cli-opts, and :paths containing :plist-file.
   Returns ctx unchanged after writing plist file."
-  [{:keys [lib-info paths] :as ctx}]
+  [{:keys [lib-info cli-opts paths] :as ctx}]
   (util/info "Creating Info.plist...")
-  (let [plist-hiccup (info-plist-hiccup lib-info)
+  (let [plist-data (merge lib-info
+                          {:with-javascript (:with-javascript cli-opts false)
+                           :enable-fts (:enable-fts cli-opts false)})
+        plist-hiccup (info-plist-hiccup plist-data)
         plist-xml (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
                        "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
                        "\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
@@ -97,13 +103,13 @@
     ctx))
 
 (defn add-icon
-  "Copies a user-specified icon into the root of the .docset directory.
-  Expects ctx with :cli-opts containing optional :icon-path and :paths.
-  Returns ctx unchanged. No-op if :icon-path is nil."
+  "Copies icons into the root of the .docset directory.
+  Uses user-specified icon if available, otherwise defaults to cljdoc icons.
+  Expects ctx with :paths containing icon paths.
+  Returns ctx unchanged."
   [{:keys [paths] :as ctx}]
-  (when-let [input-icon-path (:input-icon-path paths)]
-    (fs/copy input-icon-path (:icon-path paths)))
-
+  (doseq [[src dest] (:icon-paths paths)]
+    (fs/copy src dest))
   ctx)
 
 (defn archive-docset

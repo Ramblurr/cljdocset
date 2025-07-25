@@ -198,8 +198,24 @@
           html-content
           url-mapping))
 
+(defn rewrite-navigation-links
+  "Rewrites navigation links that have href=\"#\" to point to index.html instead.
+  Uses simple string replacement to avoid complex DOM manipulation."
+  [html-content]
+  (try
+    ;; Simple regex replacement for href="#" to href="index.html"
+    ;; This handles various quote styles
+    (-> html-content
+        (str/replace #"href\s*=\s*[\"']#[\"']" "href=\"index.html\"")
+        (str/replace #"href\s*=\s*#(?=\s|>)" "href=\"index.html\""))
+
+    (catch Exception e
+      (util/error "Error rewriting navigation links:" (.getMessage e))
+      ;; Return original content on error
+      html-content)))
+
 (defn process-html-file
-  "Processes a single HTML file: finds images, downloads remotes, and rewrites URLs.
+  "Processes a single HTML file: finds images, downloads remotes, rewrites URLs, and fixes navigation links.
   Returns a map with :content (updated HTML), :images (list of processed images)."
   [{:keys [file-path images-dir documents-dir]}]
   (let [html-content (slurp file-path)
@@ -235,9 +251,10 @@
         successful-images (filter :success? processed-images)
         url-mapping (build-image-mapping successful-images)
 
-        updated-html (if (seq url-mapping)
-                       (rewrite-image-urls html-content url-mapping)
-                       html-content)]
+        ;; Apply image URL rewriting first, then navigation link rewriting
+        updated-html (-> html-content
+                         (cond-> (seq url-mapping) (rewrite-image-urls url-mapping))
+                         rewrite-navigation-links)]
 
     {:content updated-html
      :images processed-images}))

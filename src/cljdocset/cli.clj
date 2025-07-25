@@ -29,6 +29,14 @@
    :icon-path {:desc "Path to a 16x16 or 32x32 PNG icon to include in the docset"
                :alias :i
                :ref "<file>"}
+   :with-javascript {:desc "Enable JavaScript in the docset (default: false)"
+                     :alias :j
+                     :coerce :boolean
+                     :default false}
+   :enable-fts {:desc "Enable full-text search by default in the docset"
+                :alias :f
+                :coerce :boolean
+                :default false}
    :verbose {:desc "Enable verbose output"
              :alias :v
              :coerce :boolean}
