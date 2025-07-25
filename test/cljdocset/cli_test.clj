@@ -1,3 +1,4 @@
 (ns cljdocset.cli-test
-  (:require [cljdocset.cli :as sut]
-            [clojure.test :refer [deftest is testing]]))
+  #_(:require [clojure.test :refer [deftest is testing]]
+              [babashka.cli :as cli]
+              [cljdocset.cli :as sut]))
