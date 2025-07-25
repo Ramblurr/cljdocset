@@ -78,12 +78,7 @@
           (when (or (not group-id) (not artifact-id))
             (throw (ex-info "Invalid library name format. Expected: group-id/artifact-id"
                             {:library-name library-name})))
-
           (util/info "Building docset for" library-name "version" version)
-          (util/debug "Output directory:" (:output-dir opts))
-          (when (:icon-path opts)
-            (util/debug "Icon path:" (:icon-path opts)))
-
           (let [result-ctx (download/prepare-build-environment ctx)]
             (util/info "Build environment prepared successfully")
             (util/debug "Bundle directory:" (get-in result-ctx [:paths :bundle-dir]))))

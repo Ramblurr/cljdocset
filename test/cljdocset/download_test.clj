@@ -17,23 +17,20 @@
 
 (deftest test-setup-cleanup
   (testing "registers cleanup for temp directories"
-    (let [ctx {::download/temp-dir? true
-               ::download/paths {:build-dir "/tmp/test-cleanup"}}]
+    (let [ctx {:temp-dir? true
+               :paths {:build-dir "/tmp/test-cleanup"}}]
       (is (= ctx (download/setup-cleanup ctx))))))
 
 (deftest test-extract-bundle-with-fixture
   (testing "extracts test fixture successfully"
-    (let [fixture-path "test/fixtures/reitit-0.9.1.zip"
-          temp-dir (fs/create-temp-dir)
-          ctx {::download/paths {:zip-file fixture-path
-                                 :build-dir (str temp-dir)}}]
-      (try
+    (fs/with-temp-dir [temp-dir {}]
+      (let [fixture-path "test/fixtures/reitit-0.9.1.zip"
+            ctx {:paths {:zip-path fixture-path
+                         :build-dir (str temp-dir)}}]
         (when (fs/exists? fixture-path)
           (let [result (download/extract-bundle ctx)]
-            (is (contains? (::download/paths result) :bundle-dir))
-            (let [bundle-dir (get-in result [::download/paths :bundle-dir])]
+            (is (contains? (:paths result) :bundle-dir))
+            (let [bundle-dir (get-in result [:paths :bundle-dir])]
               (is (fs/exists? bundle-dir))
               (is (fs/exists? (fs/path bundle-dir "index.html")))
-              (is (fs/exists? (fs/path bundle-dir "api"))))))
-        (finally
-          (fs/delete-tree temp-dir))))))
+              (is (fs/exists? (fs/path bundle-dir "api"))))))))))
