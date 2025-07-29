@@ -1,6 +1,6 @@
 SPDXVersion: SPDX-2.1
 DataLicense: CC0-1.0
 PackageName: cljdocset
-PackageOriginator: Casey Link <unnamedrambler@gmail.com>
+PackageOriginator: Casey Link <casey@outskirtslabs.com>
 PackageHomePage: https://github.com/Ramblurr/cljdocset
 PackageLicenseDeclared: EUPL-1.2
