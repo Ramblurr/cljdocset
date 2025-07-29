@@ -99,6 +99,25 @@
           (str/replace #"\s*(clj|cljs|clj/s)?\s*$" "")
           str/trim))))
 
+(defn has-function-signatures?
+  "Check if a .def-block contains function signature <pre> tags.
+  Functions have <pre> tags with <code> children after the h4 title.
+  Variables do not have these signature tags."
+  [def-block]
+  ;; Get the div that follows the h4
+  (when-let [content-div (first (filter #(and (map? %)
+                                              (= :div (:tag %)))
+                                        (:content def-block)))]
+    ;; Check if it contains pre tags with function signatures
+    (some #(and (map? %)
+                (= :pre (:tag %))
+                ;; Ensure it's a signature pre (has code child)
+                (some (fn [child]
+                        (and (map? child)
+                             (= :code (:tag child))))
+                      (:content %)))
+          (:content content-div))))
+
 (defn extract-symbol-type
   "Detect the type of symbol from the def-block content"
   [def-block]
@@ -111,10 +130,13 @@
                                      (str/includes? (str (:content %)) type-name))
                                content))]
     (cond
+      ;; Check special types first - they take precedence
       (has-type-span? "protocol") :protocol
       (has-type-span? "multimethod") :multimethod
       (has-type-span? "macro") :macro
-      ;; Add more type detection logic as needed
+      ;; If no function signatures, it's a var (def)
+      (not (has-function-signatures? def-block)) :var
+      ;; Otherwise, it's a function (defn)
       :else nil)))
 
 (defn extract-symbol-anchor

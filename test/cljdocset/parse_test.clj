@@ -71,6 +71,39 @@
       (is (some #(= "match->path" (:name %)) symbols))
       (is (some #(= "Protocol" (:type %)) symbols)))))
 
+(deftest var-detection-test
+  (testing "Can distinguish between vars (def) and functions (defn)"
+    (let [tempel-path "test/fixtures/tempel-1.0.0-RC1/api/taoensso.tempel.html"
+          dom (parse/parse-html-file tempel-path)
+          symbols (parse/extract-symbols dom "api/taoensso.tempel.html")
+          vars (filter #(= "Variable" (:type %)) symbols)
+          functions (filter #(= "Function" (:type %)) symbols)]
+
+      (testing "Vars are correctly identified"
+        (is (seq vars))
+        (is (some #(= "*config*" (:name %)) vars))
+        (is (some #(= "aad-help" (:name %)) vars))
+        (is (some #(= "akm-help" (:name %)) vars))
+        (is (some #(= "default-config" (:name %)) vars))
+        (is (some #(= "default-keypair-creator_" (:name %)) vars)))
+
+      (testing "Functions are correctly identified"
+        (is (seq functions))
+        (is (some #(= "as-ba" (:name %)) functions))
+        (is (some #(= "ba=" (:name %)) functions))
+        (is (some #(= "decrypt-with-password" (:name %)) functions))
+        (is (some #(= "encrypt-with-password" (:name %)) functions)))
+
+      (testing "Special types are still detected correctly"
+        ;; Tempel does have some macros
+        (let [protocols (filter #(= "Protocol" (:type %)) symbols)
+              macros (filter #(= "Macro" (:type %)) symbols)
+              multimethods (filter #(= "Method" (:type %)) symbols)]
+          (is (empty? protocols))
+          (is (seq macros))
+          (is (some #(= "with-min-runtime" (:name %)) macros))
+          (is (empty? multimethods)))))))
+
 (deftest list-api-pages-test
   (testing "Can find all API HTML files"
     (let [api-pages (parse/list-api-pages fixture-dir)]
@@ -153,11 +186,17 @@
 
       (testing "Default type is Function"
         (let [functions (filter #(= "Function" (:type %)) symbols)]
-          (is (> (count functions) 200))
+          (is (> (count functions) 150))
           ;; Check some specific functions
           (is (some #(= "router" (:name %)) functions))
           (is (some #(= "match->path" (:name %)) functions))
-          (is (some #(= "*max-compile-depth*" (:name %)) functions))))
+          ;; *max-compile-depth* is now correctly identified as a Variable
+          ))
+
+      (testing "Contains "
+        (let [vars (filter #(= "Variable" (:type %)) symbols)]
+          (is (seq vars))
+          (is (some #(= "*max-compile-depth*" (:name %)) vars))))
 
       ;; Check namespace entries
       (testing "Contains namespace entries"
