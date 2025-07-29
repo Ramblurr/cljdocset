@@ -17,6 +17,60 @@
   "Default Dash type for unmapped Clojure types"
   "Function")
 
+(defn find-all-headers
+  "Find all h2 and h3 header elements in the hickory DOM, preserving document order"
+  [hickory-dom]
+  (s/select (s/or (s/tag :h2) (s/tag :h3)) hickory-dom))
+
+(defn extract-header-text
+  "Extract clean text content from a header element, handling nested anchor tags"
+  [header-elem]
+  (let [extract-text (fn extract-text [elem]
+                       (cond
+                         (string? elem) elem
+                         (and (map? elem) (= :a (:tag elem)))
+                         (apply str (map extract-text (:content elem)))
+                         (map? elem)
+                         (apply str (map extract-text (:content elem)))
+                         :else ""))]
+    (-> (extract-text header-elem)
+        str/trim)))
+
+(defn headers->section-entries
+  "Convert header elements to section entries with h2 context tracking"
+  [headers relative-path]
+  (loop [headers headers
+         current-h2 nil
+         entries []]
+    (if-let [header (first headers)]
+      (let [tag (:tag header)
+            text (extract-header-text header)
+            ;; Try to get anchor from header attrs first, then from first child if it's an anchor
+            anchor (or (get-in header [:attrs :id])
+                       (when-let [first-child (first (:content header))]
+                         (when (and (map? first-child) (= :a (:tag first-child)))
+                           (get-in first-child [:attrs :id]))))
+            entry-name (if (and (= :h3 tag)
+                                current-h2
+                                (not (str/blank? current-h2)))
+                         (format "%s - %s" text current-h2)
+                         text)
+            new-h2 (if (= :h2 tag) text current-h2)]
+        (if (and (not (str/blank? text)) anchor)
+          (recur (rest headers)
+                 new-h2
+                 (conj entries {:name entry-name
+                                :type "Section"
+                                :path (str relative-path "#" anchor)}))
+          (recur (rest headers) new-h2 entries)))
+      entries)))
+
+(defn extract-sections
+  "Extract all section entries from a hickory DOM for a given file"
+  [hickory-dom relative-path]
+  (let [headers (find-all-headers hickory-dom)]
+    (headers->section-entries headers relative-path)))
+
 (defn parse-html-file
   "Parse an HTML file into a hickory DOM structure"
   [file-path]
@@ -147,7 +201,7 @@
        :path relative-path})))
 
 (defn parse-all-entries
-  "Parse all documentation files and extract entries (symbols, namespaces, and guides).
+  "Parse all documentation files and extract entries (symbols, namespaces, guides, and sections).
   Expects context with :paths :bundle-dir.
   Returns context with entries added at :docset-data :symbols"
   [ctx]
@@ -164,11 +218,19 @@
         ;; Parse guide pages
         guide-pages (list-guide-pages bundle-dir)
         guide-entries (keep #(parse-guide-entry bundle-dir %) guide-pages)
+        ;; Parse sections from both API and guide pages
+        all-pages (concat api-pages guide-pages)
+        section-entries (mapcat (fn [relative-path]
+                                  (let [full-path (str (fs/path bundle-dir relative-path))
+                                        dom (parse-html-file full-path)]
+                                    (extract-sections dom relative-path)))
+                                all-pages)
         ;; Combine all entries
-        all-entries (concat all-symbols namespace-entries guide-entries)]
-    (util/debug (format "Parsed %d entries: %d symbols, %d namespaces, %d guides"
+        all-entries (concat all-symbols namespace-entries guide-entries section-entries)]
+    (util/debug (format "Parsed %d entries: %d symbols, %d namespaces, %d guides, %d sections"
                         (count all-entries)
                         (count all-symbols)
                         (count namespace-entries)
-                        (count guide-entries)))
+                        (count guide-entries)
+                        (count section-entries)))
     (assoc-in ctx [:docset-data :symbols] all-entries)))

@@ -117,9 +117,10 @@
     (let [ctx {:paths {:bundle-dir fixture-dir}}
           result (parse/parse-all-entries ctx)
           entries (get-in result [:docset-data :symbols])
-          symbols (filter #(not (contains? #{"Namespace" "Guide"} (:type %))) entries)
+          symbols (filter #(not (contains? #{"Namespace" "Guide" "Section"} (:type %))) entries)
           namespaces (filter #(= "Namespace" (:type %)) entries)
-          guides (filter #(= "Guide" (:type %)) entries)]
+          guides (filter #(= "Guide" (:type %)) entries)
+          sections (filter #(= "Section" (:type %)) entries)]
 
       ;; Check symbols (same as before)
       (is (> (count symbols) 200))
@@ -174,15 +175,24 @@
         (is (every? #(str/starts-with? (:path %) "doc/") guides))
         (is (every? #(str/ends-with? (:path %) ".html") guides))
         (is (some #(= "Introduction" (:name %)) guides))
-        (is (some #(= "Route Syntax" (:name %)) guides)))))
+        (is (some #(= "Route Syntax" (:name %)) guides)))
+
+      ;; Check section entries
+      (testing "Contains section entries"
+        (is (> (count sections) 100))
+        (is (every? #(= "Section" (:type %)) sections))
+        (is (every? #(str/includes? (:path %) "#") sections))
+        (is (some #(= "Main Modules" (:name %)) sections))
+        (is (some #(str/includes? (:name %) " - ") sections)))))
 
   (testing "Full integration test - parse all entries from hiccup bundle"
     (let [ctx {:paths {:bundle-dir "test/fixtures/hiccup-2.0.0"}}
           result (parse/parse-all-entries ctx)
           entries (get-in result [:docset-data :symbols])
-          symbols (filter #(not (contains? #{"Namespace" "Guide"} (:type %))) entries)
+          symbols (filter #(not (contains? #{"Namespace" "Guide" "Section"} (:type %))) entries)
           namespaces (filter #(= "Namespace" (:type %)) entries)
-          guides (filter #(= "Guide" (:type %)) entries)]
+          guides (filter #(= "Guide" (:type %)) entries)
+          sections (filter #(= "Section" (:type %)) entries)]
 
       (is (> (count symbols) 50))
 
@@ -216,7 +226,13 @@
         (is (= 2 (count guides)))
         (is (every? #(= "Guide" (:type %)) guides))
         (is (some #(= "Hiccup" (:name %)) guides))
-        (is (some #(= "Syntax" (:name %)) guides))))))
+        (is (some #(= "Syntax" (:name %)) guides)))
+
+      ;; Check section entries
+      (testing "Contains section entries"
+        (is (>= (count sections) 10))
+        (is (every? #(= "Section" (:type %)) sections))
+        (is (every? #(str/includes? (:path %) "#") sections))))))
 
 (deftest type-mapping-test
   (testing "Clojure types map correctly to Dash types"
@@ -271,6 +287,78 @@
                   :type "Macro"
                   :path "api/hiccup2.core.html#html"}
                  html-macro)))))))
+
+(deftest extract-header-text-test
+  (testing "Extracts text from simple h2"
+    (let [test-h2 {:tag :h2 :attrs {} :content ["Simple Header"]}]
+      (is (= "Simple Header" (parse/extract-header-text test-h2)))))
+
+  (testing "Extracts text from h2 with nested anchor"
+    (let [test-h2 {:tag :h2
+                   :attrs {:id "test-id"}
+                   :content [{:tag :a
+                              :attrs {:class "link" :href "#test-id"}
+                              :content ["Nested Header"]}]}]
+      (is (= "Nested Header" (parse/extract-header-text test-h2)))))
+
+  (testing "Handles empty header"
+    (let [test-h2 {:tag :h2 :attrs {} :content []}]
+      (is (= "" (parse/extract-header-text test-h2)))))
+
+  (testing "Handles header with code tags"
+    (let [test-h2 {:tag :h2
+                   :attrs {}
+                   :content ["From " {:tag :code :attrs {} :content ["poly"]}]}]
+      (is (= "From poly" (parse/extract-header-text test-h2))))))
+
+(deftest headers->section-entries-test
+  (testing "Converts headers to section entries with h2 context"
+    (let [headers [{:tag :h2 :attrs {:id "test-filters"} :content ["Test Filters"]}
+                   {:tag :h3 :attrs {:id "filter-projects"} :content ["Filter on Projects"]}
+                   {:tag :h3 :attrs {:id "filter-bricks"} :content ["Filter on Bricks"]}
+                   {:tag :h2 :attrs {:id "project-tests"} :content ["Project Tests"]}
+                   {:tag :h3 :attrs {:id "test-approach"} :content ["Test Approach"]}]
+          entries (parse/headers->section-entries headers "doc/testing.html")]
+      (is (= 5 (count entries)))
+      (is (= "Test Filters" (:name (first entries))))
+      (is (= "Filter on Projects - Test Filters" (:name (second entries))))
+      (is (= "Filter on Bricks - Test Filters" (:name (nth entries 2))))
+      (is (= "Project Tests" (:name (nth entries 3))))
+      (is (= "Test Approach - Project Tests" (:name (nth entries 4))))
+      (is (every? #(= "Section" (:type %)) entries))
+      (is (= "doc/testing.html#test-filters" (:path (first entries))))
+      (is (= "doc/testing.html#filter-projects" (:path (second entries))))))
+
+  (testing "Handles headers without anchors"
+    (let [headers [{:tag :h2 :attrs {} :content ["No Anchor"]}
+                   {:tag :h3 :attrs {:id "has-anchor"} :content ["Has Anchor"]}]
+          entries (parse/headers->section-entries headers "doc/test.html")]
+      (is (= 1 (count entries)))
+      (is (= "Has Anchor - No Anchor" (:name (first entries))))))
+
+  (testing "Handles empty header text"
+    (let [headers [{:tag :h2 :attrs {:id "empty"} :content []}
+                   {:tag :h3 :attrs {:id "not-empty"} :content ["Not Empty"]}]
+          entries (parse/headers->section-entries headers "doc/test.html")]
+      (is (= 1 (count entries)))
+      (is (= "Not Empty" (:name (first entries)))))))
+
+(deftest extract-sections-integration-test
+  (testing "Extract sections from actual clj-poly testing.html"
+    (let [testing-path "test/fixtures/clj-poly-0.2.22/doc/testing.html"
+          dom (parse/parse-html-file testing-path)
+          sections (parse/extract-sections dom "doc/testing.html")]
+      (is (seq sections))
+      ;; Check some expected sections
+      (is (some #(= "Test Filters" (:name %)) sections))
+      (is (some #(= "Filter on Projects - Test Filters" (:name %)) sections))
+      (is (some #(= "Filter on Bricks - Test Filters" (:name %)) sections))
+      (is (some #(= "Project Tests" (:name %)) sections))
+      (is (some #(= "Test approaches" (:name %)) sections))
+      (is (some #(= "Summary" (:name %)) sections))
+      ;; Check all have correct type and path format
+      (is (every? #(= "Section" (:type %)) sections))
+      (is (every? #(str/starts-with? (:path %) "doc/testing.html#") sections)))))
 
 (comment
   (require '[clojure.pprint :as pp])
