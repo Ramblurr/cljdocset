@@ -1,6 +1,7 @@
 (ns cljdocset.cli
   (:require
    [babashka.cli :as cli]
+   [babashka.fs :as fs]
    [cljdocset.db :as db]
    [cljdocset.docset :as docset]
    [cljdocset.download :as download]
@@ -124,7 +125,7 @@
 
       (try
         (let [[group-id artifact-id] (str/split library-name #"/")
-              docset-name (str artifact-id "-" version)
+              docset-name (str group-id "-" artifact-id "-" version)
               ctx {:cli-opts opts
                    :lib-info {:group-id group-id
                               :artifact-id artifact-id
@@ -135,17 +136,15 @@
             (throw (ex-info "Invalid library name format. Expected: group-id/artifact-id"
                             {:library-name library-name})))
 
-          ;; Run the complete pipeline
-          (let [result-ctx (build-docset ctx)
-                {:keys [docset-path archive-path]} (:final-artifacts result-ctx)]
+          (let [{:keys [final-artifacts]} (build-docset ctx)
+                {:keys [docset-path archive-path]} final-artifacts]
 
-            ;; Report success
             (util/info "")
-            (util/info "✅ Docset generation completed successfully!")
+            (util/info "Docset generation complete")
             (util/info "")
             (util/info "Generated artifacts:")
-            (util/info "  Docset:" docset-path)
-            (util/info "  Archive:" archive-path)
+            (util/info "  Docset:" (str (fs/absolutize docset-path)))
+            (util/info "  Archive:" (str (fs/absolutize archive-path)))
             (util/info "")
             (util/info "You can now:")
             (util/info "  - Import the .docset directory into Dash/Zeal")

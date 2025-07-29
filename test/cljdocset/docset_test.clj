@@ -10,23 +10,23 @@
   (testing "resolves all docset paths with build dir"
     (fs/with-temp-dir [temp-dir {}]
       (let [ctx {:cli-opts {}
-                 :lib-info {:docset-name "test-lib-1.0.0"}
+                 :lib-info {:docset-name "test-group-test-lib-1.0.0"}
                  :paths {:build-dir (str temp-dir)}}
             result (docset/resolve-docset-paths ctx)
             paths (:paths result)]
         (is (str/ends-with? (str (:output-dir paths)) "out"))
-        (is (str/ends-with? (str (:docset-dir paths)) "test-lib-1.0.0.docset"))
-        (is (str/ends-with? (str (:contents-dir paths)) "test-lib-1.0.0.docset/Contents"))
+        (is (str/ends-with? (str (:docset-dir paths)) "test-group-test-lib-1.0.0.docset"))
+        (is (str/ends-with? (str (:contents-dir paths)) "test-group-test-lib-1.0.0.docset/Contents"))
         (is (str/ends-with? (str (:resources-dir paths)) "Contents/Resources"))
         (is (str/ends-with? (str (:documents-dir paths)) "Resources/Documents"))
         (is (str/ends-with? (str (:db-file paths)) "Resources/docSet.dsidx"))
         (is (str/ends-with? (str (:plist-file paths)) "Contents/Info.plist"))
-        (is (str/ends-with? (str (:archive-file paths)) "test-lib-1.0.0.tgz")))))
+        (is (str/ends-with? (str (:archive-file paths)) "test-group-test-lib-1.0.0.tgz")))))
 
   (testing "resolves paths with different build dir"
     (fs/with-temp-dir [temp-dir {}]
       (let [ctx {:cli-opts {}
-                 :lib-info {:docset-name "test-lib-1.0.0"}
+                 :lib-info {:docset-name "test-group-test-lib-1.0.0"}
                  :paths {:build-dir (str temp-dir)}}
             result (docset/resolve-docset-paths ctx)
             paths (:paths result)]
@@ -62,7 +62,8 @@
     (fs/with-temp-dir [temp-dir {}]
       (let [plist-file (fs/path temp-dir "Info.plist")
             ctx {:lib-info {:bundle-id "test-bundle"
-                            :docset-name "test-lib-1.0.0"
+                            :docset-name "test-group-test-lib-1.0.0"
+                            :group-id "test-group"
                             :artifact-id "test-lib"
                             :version "1.0.0"}
                  :paths {:plist-file (str plist-file)}}]
@@ -73,7 +74,7 @@
           (is (str/includes? content "<key>CFBundleIdentifier</key>"))
           (is (str/includes? content "<string>test-bundle</string>"))
           (is (str/includes? content "<key>CFBundleName</key>"))
-          (is (str/includes? content "<string>test-lib 1.0.0</string>"))
+          (is (str/includes? content "<string>test-group/test-lib 1.0.0</string>"))
           (is (str/includes? content "<key>isDashDocset</key>"))
           (is (str/includes? content "<true />")))))))
 
