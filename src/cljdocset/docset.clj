@@ -58,12 +58,12 @@
 
 (defn- info-plist-hiccup
   "Returns the Hiccup structure for the Info.plist file."
-  [{:keys [bundle-id docset-name artifact-id version with-javascript enable-fts]}]
+  [{:keys [bundle-id docset-name group-id artifact-id version with-javascript enable-fts]}]
   (let [base-dict [:dict
                    [:key "CFBundleIdentifier"]
                    [:string bundle-id]
                    [:key "CFBundleName"]
-                   [:string (str artifact-id " " version)]
+                   [:string (str group-id "/" artifact-id " " version)]
                    [:key "isDashDocset"]
                    [:true]
                    [:key "DocSetPlatformFamily"]
