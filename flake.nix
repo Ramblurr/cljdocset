@@ -23,7 +23,7 @@
               "sqlite"
             ];
           };
-        cljdocset =
+        default =
           pkgs: pkgs.callPackage ./package.nix { babashka = self.packages.${pkgs.system}.babashka; };
       };
 
@@ -42,9 +42,14 @@
         ];
 
       flakelight.builtinFormatters = false;
-      formatters = pkgs: {
-        "*.nix" = "${pkgs.nixfmt}/bin/nixfmt";
-        "*.clj" = "${pkgs.cljfmt}/bin/cljfmt fix";
-      };
+      formatter =
+        pkgs:
+        pkgs.writeShellScriptBin "formatter" ''
+          set -euo pipefail
+          root="''${1:-.}"
+          cd "$root"
+          ${pkgs.nixfmt}/bin/nixfmt flake.nix package.nix
+          ${pkgs.cljfmt}/bin/cljfmt fix src test dev
+        '';
     };
 }
