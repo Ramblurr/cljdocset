@@ -4,7 +4,6 @@
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1"; # tracks nixpkgs unstable branch
     devenv.url = "github:ramblurr/nix-devenv";
     devenv.inputs.nixpkgs.follows = "nixpkgs";
-    # clj-nix is only used for mkBabashka (babashka with jdbc+sqlite features)
     clj-nix.url = "github:jlesquembre/clj-nix";
     clj-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
