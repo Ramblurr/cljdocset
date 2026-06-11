@@ -2,18 +2,21 @@
   description = "a tool to generate a docset from the cljdoc of a Clojure project";
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1"; # tracks nixpkgs unstable branch
-    flakelight.url = "github:nix-community/flakelight";
+    devenv.url = "github:ramblurr/nix-devenv";
+    devenv.inputs.nixpkgs.follows = "nixpkgs";
+    # clj-nix is only used for mkBabashka (babashka with jdbc+sqlite features)
     clj-nix.url = "github:jlesquembre/clj-nix";
     clj-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs =
     {
       self,
-      flakelight,
+      devenv,
       clj-nix,
       ...
-    }:
-    flakelight ./. {
+    }@inputs:
+    devenv.lib.mkFlake ./. {
+      inherit inputs;
       packages = {
         babashka =
           pkgs:
@@ -37,19 +40,14 @@
           clj-kondo
           cljfmt
           git
-          #self.packages.${pkgs.system}.cljdocset
           self.packages.${pkgs.system}.babashka
         ];
 
-      flakelight.builtinFormatters = false;
-      formatter =
-        pkgs:
-        pkgs.writeShellScriptBin "formatter" ''
-          set -euo pipefail
-          root="''${1:-.}"
-          cd "$root"
-          ${pkgs.nixfmt}/bin/nixfmt flake.nix package.nix
-          ${pkgs.cljfmt}/bin/cljfmt fix src test dev
-        '';
+      treefmtConfig = {
+        programs = {
+          nixfmt.enable = true;
+          cljfmt.enable = true;
+        };
+      };
     };
 }
