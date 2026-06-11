@@ -48,6 +48,7 @@
           nixfmt.enable = true;
           cljfmt.enable = true;
         };
+        settings.global.excludes = [ ".clj-kondo/**" ];
       };
     };
 }
